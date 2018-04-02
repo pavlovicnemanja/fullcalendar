@@ -11,7 +11,7 @@ Bootstrap4Theme.prototype.classes = {
   tableListHeading: 'table-active',
 
   buttonGroup: 'btn-group',
-  button: 'btn btn-primary',
+  button: 'btn btn-default',
   stateActive: 'active',
   stateDisabled: 'disabled',
 

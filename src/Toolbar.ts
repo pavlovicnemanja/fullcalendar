@@ -1,5 +1,5 @@
 import * as $ from 'jquery'
-import { htmlEscape } from './util'
+import {htmlEscape} from './util'
 
 
 /* Toolbar with buttons and title
@@ -7,250 +7,266 @@ import { htmlEscape } from './util'
 
 export default class Toolbar {
 
-  calendar: any
-  toolbarOptions: any
-  el: any = null // mirrors local `el`
-  viewsWithButtons: any = []
+    calendar: any
+    toolbarOptions: any
+    el: any = null // mirrors local `el`
+    viewsWithButtons: any = []
 
 
-  constructor(calendar, toolbarOptions) {
-    this.calendar = calendar
-    this.toolbarOptions = toolbarOptions
-  }
-
-
-  // method to update toolbar-specific options, not calendar-wide options
-  setToolbarOptions(newToolbarOptions) {
-    this.toolbarOptions = newToolbarOptions
-  }
-
-
-  // can be called repeatedly and will rerender
-  render() {
-    let sections = this.toolbarOptions.layout
-    let el = this.el
-
-    if (sections) {
-      if (!el) {
-        el = this.el = $("<div class='fc-toolbar " + this.toolbarOptions.extraClasses + "'/>")
-      } else {
-        el.empty()
-      }
-      el.append(this.renderSection('left'))
-        .append(this.renderSection('right'))
-        .append(this.renderSection('center'))
-        .append('<div class="fc-clear"/>')
-    } else {
-      this.removeElement()
+    constructor(calendar, toolbarOptions) {
+        this.calendar = calendar
+        this.toolbarOptions = toolbarOptions
     }
-  }
 
 
-  removeElement() {
-    if (this.el) {
-      this.el.remove()
-      this.el = null
+    // method to update toolbar-specific options, not calendar-wide options
+    setToolbarOptions(newToolbarOptions) {
+        this.toolbarOptions = newToolbarOptions
     }
-  }
 
 
-  renderSection(position) {
-    let calendar = this.calendar
-    let theme = calendar.theme
-    let optionsManager = calendar.optionsManager
-    let viewSpecManager = calendar.viewSpecManager
-    let sectionEl = $('<div class="fc-' + position + '"/>')
-    let buttonStr = this.toolbarOptions.layout[position]
-    let calendarCustomButtons = optionsManager.get('customButtons') || {}
-    let calendarButtonTextOverrides = optionsManager.overrides.buttonText || {}
-    let calendarButtonText = optionsManager.get('buttonText') || {}
+    // can be called repeatedly and will rerender
+    render() {
+        let sections = this.toolbarOptions.layout
+        let el = this.el
 
-    if (buttonStr) {
-      $.each(buttonStr.split(' '), (i, buttonGroupStr) => {
-        let groupChildren = $()
-        let isOnlyButtons = true
-        let groupEl
-
-        $.each(buttonGroupStr.split(','), (j, buttonName) => {
-          let customButtonProps
-          let viewSpec
-          let buttonClick
-          let buttonIcon // only one of these will be set
-          let buttonText // "
-          let buttonInnerHtml
-          let buttonClasses
-          let buttonEl
-          let buttonAriaAttr
-
-          if (buttonName === 'title') {
-            groupChildren = groupChildren.add($('<h2>&nbsp;</h2>')) // we always want it to take up height
-            isOnlyButtons = false
-          } else {
-
-            if ((customButtonProps = calendarCustomButtons[buttonName])) {
-              buttonClick = function(ev) {
-                if (customButtonProps.click) {
-                  customButtonProps.click.call(buttonEl[0], ev)
-                }
-              };
-              (buttonIcon = theme.getCustomButtonIconClass(customButtonProps)) ||
-              (buttonIcon = theme.getIconClass(buttonName)) ||
-              (buttonText = customButtonProps.text)
-            } else if ((viewSpec = viewSpecManager.getViewSpec(buttonName))) {
-              this.viewsWithButtons.push(buttonName)
-              buttonClick = function() {
-                calendar.changeView(buttonName)
-              };
-              (buttonText = viewSpec.buttonTextOverride) ||
-              (buttonIcon = theme.getIconClass(buttonName)) ||
-              (buttonText = viewSpec.buttonTextDefault)
-            } else if (calendar[buttonName]) { // a calendar method
-              buttonClick = function() {
-                calendar[buttonName]()
-              };
-              (buttonText = calendarButtonTextOverrides[buttonName]) ||
-              (buttonIcon = theme.getIconClass(buttonName)) ||
-              (buttonText = calendarButtonText[buttonName])
-              //            ^ everything else is considered default
+        if (sections) {
+            if (!el) {
+                el = this.el = $("<div class='fc-toolbar " + this.toolbarOptions.extraClasses + "'/>")
+            } else {
+                el.empty()
             }
-
-            if (buttonClick) {
-
-              buttonClasses = [
-                'fc-' + buttonName + '-button',
-                theme.getClass('button'),
-                theme.getClass('stateDefault')
-              ]
-
-              if (buttonText) {
-                buttonInnerHtml = htmlEscape(buttonText)
-                buttonAriaAttr = ''
-              } else if (buttonIcon) {
-                buttonInnerHtml = "<span class='" + buttonIcon + "'></span>"
-                buttonAriaAttr = ' aria-label="' + buttonName + '"'
-              }
-
-              buttonEl = $( // type="button" so that it doesn't submit a form
-                '<button type="button" class="' + buttonClasses.join(' ') + '"' +
-                  buttonAriaAttr +
-                '>' + buttonInnerHtml + '</button>'
-              )
-                .click(function(ev) {
-                  // don't process clicks for disabled buttons
-                  if (!buttonEl.hasClass(theme.getClass('stateDisabled'))) {
-
-                    buttonClick(ev)
-
-                    // after the click action, if the button becomes the "active" tab, or disabled,
-                    // it should never have a hover class, so remove it now.
-                    if (
-                      buttonEl.hasClass(theme.getClass('stateActive')) ||
-                      buttonEl.hasClass(theme.getClass('stateDisabled'))
-                    ) {
-                      buttonEl.removeClass(theme.getClass('stateHover'))
-                    }
-                  }
-                })
-                .mousedown(function() {
-                  // the *down* effect (mouse pressed in).
-                  // only on buttons that are not the "active" tab, or disabled
-                  buttonEl
-                    .not('.' + theme.getClass('stateActive'))
-                    .not('.' + theme.getClass('stateDisabled'))
-                    .addClass(theme.getClass('stateDown'))
-                })
-                .mouseup(function() {
-                  // undo the *down* effect
-                  buttonEl.removeClass(theme.getClass('stateDown'))
-                })
-                .hover(
-                  function() {
-                    // the *hover* effect.
-                    // only on buttons that are not the "active" tab, or disabled
-                    buttonEl
-                      .not('.' + theme.getClass('stateActive'))
-                      .not('.' + theme.getClass('stateDisabled'))
-                      .addClass(theme.getClass('stateHover'))
-                  },
-                  function() {
-                    // undo the *hover* effect
-                    buttonEl
-                      .removeClass(theme.getClass('stateHover'))
-                      .removeClass(theme.getClass('stateDown')) // if mouseleave happens before mouseup
-                  }
-                )
-
-              groupChildren = groupChildren.add(buttonEl)
-            }
-          }
-        })
-
-        if (isOnlyButtons) {
-          groupChildren
-            .first().addClass(theme.getClass('cornerLeft')).end()
-            .last().addClass(theme.getClass('cornerRight')).end()
-        }
-
-        if (groupChildren.length > 1) {
-          groupEl = $('<div/>')
-          if (isOnlyButtons) {
-            groupEl.addClass(theme.getClass('buttonGroup'))
-          }
-          groupEl.append(groupChildren)
-          sectionEl.append(groupEl)
+            el.append(this.renderSection('left'))
+                .append(this.renderSection('right'))
+                .append(this.renderSection('center'))
+                .append('<div class="fc-clear"/>')
         } else {
-          sectionEl.append(groupChildren) // 1 or 0 children
+            this.removeElement()
         }
-      })
     }
 
-    return sectionEl
-  }
 
-
-  updateTitle(text) {
-    if (this.el) {
-      this.el.find('h2').text(text)
+    removeElement() {
+        if (this.el) {
+            this.el.remove()
+            this.el = null
+        }
     }
-  }
 
 
-  activateButton(buttonName) {
-    if (this.el) {
-      this.el.find('.fc-' + buttonName + '-button')
-        .addClass(this.calendar.theme.getClass('stateActive'))
+    renderSection(position) {
+        let calendar = this.calendar
+        let theme = calendar.theme
+        let collapsed = this.toolbarOptions.layout.collapsed && this.toolbarOptions.layout.collapsed[position];
+        let optionsManager = calendar.optionsManager
+        let viewSpecManager = calendar.viewSpecManager
+        let sectionEl = $('<div class="fc-' + position + '"/>')
+        let buttonStr = this.toolbarOptions.layout[position]
+        let calendarCustomButtons = optionsManager.get('customButtons') || {}
+        let calendarButtonTextOverrides = optionsManager.overrides.buttonText || {}
+        let calendarButtonText = optionsManager.get('buttonText') || {}
+
+        if (buttonStr) {
+            $.each(buttonStr.split(' '), (i, buttonGroupStr) => {
+                let groupChildren = $()
+                let isOnlyButtons = true
+                let groupEl
+
+                $.each(buttonGroupStr.split(','), (j, buttonName) => {
+                    let customButtonProps
+                    let viewSpec
+                    let buttonClick
+                    let buttonIcon // only one of these will be set
+                    let buttonText // "
+                    let buttonInnerHtml
+                    let buttonClasses
+                    let buttonEl
+                    let buttonAriaAttr
+
+                    if (buttonName === 'title') {
+                        groupChildren = groupChildren.add($('<h2>&nbsp;</h2>')) // we always want it to take up height
+                        isOnlyButtons = false
+                    } else {
+
+                        if ((customButtonProps = calendarCustomButtons[buttonName])) {
+                            buttonClick = function (ev) {
+                                if (customButtonProps.click) {
+                                    customButtonProps.click.call(buttonEl[0], ev)
+                                }
+                            };
+                            (buttonIcon = theme.getCustomButtonIconClass(customButtonProps)) ||
+                                (buttonIcon = theme.getIconClass(buttonName)) ||
+                                (buttonText = customButtonProps.text)
+                        } else if ((viewSpec = viewSpecManager.getViewSpec(buttonName))) {
+                            this.viewsWithButtons.push(buttonName)
+                            buttonClick = function () {
+                                calendar.changeView(buttonName)
+                            };
+                            (buttonText = viewSpec.buttonTextOverride) ||
+                                (buttonIcon = theme.getIconClass(buttonName)) ||
+                                (buttonText = viewSpec.buttonTextDefault)
+                        } else if (calendar[buttonName]) { // a calendar method
+                            buttonClick = function () {
+                                calendar[buttonName]()
+                            };
+                            (buttonText = calendarButtonTextOverrides[buttonName]) ||
+                                (buttonIcon = theme.getIconClass(buttonName)) ||
+                                (buttonText = calendarButtonText[buttonName])
+                            //            ^ everything else is considered default
+                        }
+
+                        if (buttonClick) {
+                            if (collapsed) {
+                                buttonClasses = ['dropdown-item'];
+                            } else {
+                                buttonClasses = [
+                                    'fc-' + buttonName + '-button',
+                                    theme.getClass('button'),
+                                    theme.getClass('stateDefault')
+                                ]
+                            }
+
+                            if (buttonText) {
+                                buttonInnerHtml = htmlEscape(buttonText)
+                                buttonAriaAttr = ''
+                            } else if (buttonIcon) {
+                                buttonInnerHtml = "<span class='" + buttonIcon + "'></span>"
+                                buttonAriaAttr = ' aria-label="' + buttonName + '"'
+                            }
+
+                            buttonEl = $( // type="button" so that it doesn't submit a form
+                                '<button type="button" class="' + buttonClasses.join(' ') + '"' +
+                                buttonAriaAttr +
+                                '>' + buttonInnerHtml + '</button>'
+                            )
+                                .click(function (ev) {
+                                    // don't process clicks for disabled buttons
+                                    if (!buttonEl.hasClass(theme.getClass('stateDisabled'))) {
+
+                                        buttonClick(ev)
+
+                                        // after the click action, if the button becomes the "active" tab, or disabled,
+                                        // it should never have a hover class, so remove it now.
+                                        if (
+                                            buttonEl.hasClass(theme.getClass('stateActive')) ||
+                                            buttonEl.hasClass(theme.getClass('stateDisabled'))
+                                        ) {
+                                            buttonEl.removeClass(theme.getClass('stateHover'))
+                                        }
+                                    }
+                                })
+                                .mousedown(function () {
+                                    // the *down* effect (mouse pressed in).
+                                    // only on buttons that are not the "active" tab, or disabled
+                                    buttonEl
+                                        .not('.' + theme.getClass('stateActive'))
+                                        .not('.' + theme.getClass('stateDisabled'))
+                                        .addClass(theme.getClass('stateDown'))
+                                })
+                                .mouseup(function () {
+                                    // undo the *down* effect
+                                    buttonEl.removeClass(theme.getClass('stateDown'))
+                                })
+                                .hover(
+                                    function () {
+                                        // the *hover* effect.
+                                        // only on buttons that are not the "active" tab, or disabled
+                                        buttonEl
+                                            .not('.' + theme.getClass('stateActive'))
+                                            .not('.' + theme.getClass('stateDisabled'))
+                                            .addClass(theme.getClass('stateHover'))
+                                    },
+                                    function () {
+                                        // undo the *hover* effect
+                                        buttonEl
+                                            .removeClass(theme.getClass('stateHover'))
+                                            .removeClass(theme.getClass('stateDown')) // if mouseleave happens before mouseup
+                                    }
+                                )
+
+                            groupChildren = groupChildren.add(buttonEl)
+                        }
+                    }
+                })
+
+                if (isOnlyButtons) {
+                    groupChildren
+                        .first().addClass(theme.getClass('cornerLeft')).end()
+                        .last().addClass(theme.getClass('cornerRight')).end()
+                }
+
+                if (groupChildren.length > 1) {
+                    groupEl = $('<div/>')
+                    if (collapsed) {
+                        if (isOnlyButtons) {
+                            groupEl.addClass('dropdown');
+                        }
+                        groupEl.prepend('<div class="dropdown-menu dropdown-menu-right"/>');
+                        groupEl.prepend('<button class="btn btn-secondary dropdown-toggle" data-toggle="dropdown">Choose</button>');
+                        groupEl.find('.dropdown-menu').append(groupChildren);
+                    } else {
+                        if (isOnlyButtons) {
+                            groupEl.addClass(theme.getClass('buttonGroup'))
+                        }
+                        groupEl.append(groupChildren)
+                    }
+                    sectionEl.append(groupEl)
+                } else {
+                    sectionEl.append(groupChildren) // 1 or 0 children
+                }
+            })
+        }
+
+        return sectionEl
     }
-  }
 
 
-  deactivateButton(buttonName) {
-    if (this.el) {
-      this.el.find('.fc-' + buttonName + '-button')
-        .removeClass(this.calendar.theme.getClass('stateActive'))
+    updateTitle(text) {
+        if (this.el) {
+            this.el.find('h2').text(text)
+        }
     }
-  }
 
 
-  disableButton(buttonName) {
-    if (this.el) {
-      this.el.find('.fc-' + buttonName + '-button')
-        .prop('disabled', true)
-        .addClass(this.calendar.theme.getClass('stateDisabled'))
+    activateButton(buttonName) {
+        let viewSpec = this.calendar.viewSpecManager.getViewSpec(buttonName);
+        if (this.el) {
+            this.el.find('.fc-' + buttonName + '-button')
+                .addClass(this.calendar.theme.getClass('stateActive'))
+
+            this.el.find('.dropdown-toggle').html(viewSpec.buttonTextDefault);
+        }
     }
-  }
 
 
-  enableButton(buttonName) {
-    if (this.el) {
-      this.el.find('.fc-' + buttonName + '-button')
-        .prop('disabled', false)
-        .removeClass(this.calendar.theme.getClass('stateDisabled'))
+    deactivateButton(buttonName) {
+        if (this.el) {
+            this.el.find('.fc-' + buttonName + '-button')
+                .removeClass(this.calendar.theme.getClass('stateActive'))
+        }
     }
-  }
 
 
-  getViewsWithButtons() {
-    return this.viewsWithButtons
-  }
+    disableButton(buttonName) {
+        if (this.el) {
+            this.el.find('.fc-' + buttonName + '-button')
+                .prop('disabled', true)
+                .addClass(this.calendar.theme.getClass('stateDisabled'))
+        }
+    }
+
+
+    enableButton(buttonName) {
+        if (this.el) {
+            this.el.find('.fc-' + buttonName + '-button')
+                .prop('disabled', false)
+                .removeClass(this.calendar.theme.getClass('stateDisabled'))
+        }
+    }
+
+
+    getViewsWithButtons() {
+        return this.viewsWithButtons
+    }
 
 }
